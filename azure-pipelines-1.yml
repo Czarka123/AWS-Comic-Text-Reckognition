@@ -1,0 +1,35 @@
+#for pipelin in Azure Ops
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+    addToPath: true
+    architecture: 'x64'
+
+
+
+- script: sudo npm i -g serverless
+  displayName: 'NPM'
+
+- script: export AWS_PROFILE="default"
+  displayName: 'Profile'
+
+- script: sudo serverless config credentials --provider aws --key $(AWS_KEY) --secret $(AWS_SECRET)
+  displayName: 'Creditinals '
+
+# couldn't set token via config credentials, so just adding it to end of file
+- script: sudo echo $(AWS_TOKEN) | sudo tee -a ~/.aws/credentials
+  displayName: 'Token '
+
+#- script: sudo cat ~/.aws/credentials
+
+- script: sudo serverless deploy

@@ -1,0 +1,119 @@
+service: psr-project # NOTE: update this with your service name
+
+provider:
+  name: aws
+  runtime: python3.7
+
+  stage: dev
+  region: us-east-1
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "rekognition:DetectLabels"
+        - "rekognition:DetectText"
+      Resource:
+        - "*"
+    - Effect: "Allow"
+      Action: 
+        - "dynamodb:PutItem"
+        - "dynamodb:Scan"
+        - "dynamodb:UpdateItem"
+      Resource:
+        - !GetAtt Table.Arn
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+        - "s3:PutObjectAcl"
+        - "s3:GetBucketLocation"
+      Resource: 
+        - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - "Ref" : "Storage"
+              - "/*"
+        - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - "Ref" : "Storage"
+    
+    - Effect: "Allow"
+      Action:
+        - "s3:ListBucket"
+      Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+      Resource:
+        Fn::Join:
+          - ""
+          - - "arn:aws:s3:::"
+            - "Ref" : "ServerlessDeploymentBucket"
+            - "/*"
+
+
+  environment:
+    Bucket: !Ref Storage
+    Table: !Ref Table
+
+functions:
+  upload:
+    handler: handler.upload
+    events:
+      - http:
+          path: upload
+          method: post
+  list:
+    handler: handler.list
+    events:
+      - http:
+          path: list
+          method: get
+
+  created:
+    handler: handler.created
+    reservedConcurrency: 4
+    events:
+      - sqs:
+          batchSize: 2
+          arn:
+            Fn::GetAtt:
+            - Queue
+            - Arn
+resources:
+  Resources:
+    Storage:
+      Type: AWS::S3::Bucket
+      Properties:
+        NotificationConfiguration:
+          QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue: !GetAtt Queue.Arn
+    Table:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: ID
+            AttributeType: S
+        KeySchema:
+          - AttributeName: ID
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+    Queue:
+      Type: AWS::SQS::Queue
+      Properties:
+        VisibilityTimeout: 60
+    QueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+        - !Ref Queue
+        PolicyDocument:
+          Id: "QueuePolicyId1"
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service: "s3.amazonaws.com"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt Queue.Arn
