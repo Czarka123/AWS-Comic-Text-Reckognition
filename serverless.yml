@@ -63,12 +63,6 @@ functions:
       - http:
           path: upload
           method: post
-  list:
-    handler: handler.list
-    events:
-      - http:
-          path: list
-          method: get
 
   created:
     handler: handler.created

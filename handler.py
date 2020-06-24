@@ -25,12 +25,6 @@ class ComicText:
 
 
 
-def list(event, context):
-    items = table.scan()["Items"]
-    return {
-        "body": json.dumps(items),
-        "statusCode": 200
-    }
 
 def get_public_url(bucket, key):
     return "https://s3.us-east-1.amazonaws.com/{}/{}".format(bucket, key)
