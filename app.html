@@ -1,0 +1,111 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <form enctype="multipart/form-data" method="post" action="javascript:" onsubmit="UploadFile(fileToUpload)">
+        <div class="row">
+            <label for="fileToUpload">Select File to Upload</label><br />
+            <input type="file" name="fileToUpload" id="fileToUpload"  />
+            <output id="fileInfo"></output>
+        </div>
+        <div class="row">
+            <input type="submit" value="Upload" id="upload"/>
+        </div>
+        <div class="canvas">
+            <canvas id="canvas" width="200" height="100"></canvas>
+        </div>
+    </form>
+
+
+    <script>
+        function fileSelect(event) {
+            console.log(event);
+            var file = event.target.files;
+
+            var result = '';
+            var img;
+            for (var i = 0; img = file[i]; i++) {
+                result += '<li>' + img.name + ' ' + img.size + ' bytes</li>';            
+            }         
+            document.getElementById('fileInfo').innerHTML = '<ul>' + result + '</ul>';
+        }
+        document.getElementById('fileToUpload').addEventListener('change', fileSelect, false);
+
+        function UploadFile(event) {
+            //console.log(event.files);
+            var file = event.files;
+
+
+            var promise = getBase64(file[0]);
+            promise.then(function (baseCode) {
+                //console.log(baseCode.split(',')[1]); 
+                SendPost(baseCode.split(',')[1], file[0].name)
+            });          
+        }
+        document.getElementById("upload").addEventListener("change", UploadFile,false);
+
+
+        function SendPost(file, name) {
+            //console.log(file + " " + name); 
+            var xhr = new XMLHttpRequest();
+            var url = "url1";
+            var json;
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    json = JSON.parse(xhr.responseText);  
+                    console.log("id : " + json.id)
+                    GetProcessedDataAsync(json.id)
+                }
+            };
+            var data = JSON.stringify({ "file": file, "name": name });
+            //console.log(data); 
+            xhr.send(data);
+
+        }
+
+        function GetProcessedDataAsync(id) {
+            url = "url2"
+            
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", url, true); // true for asynchronous         
+            xmlHttp.setRequestHeader("Content-Type", "application/json");
+            xmlHttp.onreadystatechange = function () {
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200 || xmlHttp.status == 204) {
+                    var json = JSON.parse(xmlHttp.responseText);
+                    console.log("textType : " + json.textType);
+                    console.log(" text: " + json.text);
+                    CreateElement("Detected Text Type:  "+json.textType,"div1");
+                    CreateElement("Text Detected:   " +json.text,"div2");
+                }
+            };        
+            var data = JSON.stringify({ "id": id });          
+            xmlHttp.send(data);
+            console.log("sended: " + data)
+        }
+
+        function getBase64(file, onLoadCallback) {
+            return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function () { resolve(reader.result); };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function CreateElement(text,elementId) {
+            var newDiv = document.createElement("div");
+            var newContent = document.createTextNode(text);
+            newDiv.appendChild(newContent); 
+            var currentDiv = document.getElementById(elementId);
+            document.body.insertBefore(newDiv, currentDiv);
+        }
+
+    </script>
+</body >
+</html >

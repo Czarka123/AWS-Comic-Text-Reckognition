@@ -5,7 +5,7 @@ import uuid
 import pprint
 import base64
 import imghdr
-
+import time
 
 s3client = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
@@ -24,8 +24,6 @@ class ComicText:
         self.Height = Height
 
 
-
-
 def get_public_url(bucket, key):
     return "https://s3.us-east-1.amazonaws.com/{}/{}".format(bucket, key)
 
@@ -41,6 +39,11 @@ def upload(event, context):
     if not event['body'] or event['body']=="":
         return {
             "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": "empty request"
         }
 
@@ -51,6 +54,11 @@ def upload(event, context):
     except Exception as e:
         return {
             "statusCode": 500,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": "couldn't decode picture"
         }
 
@@ -74,6 +82,11 @@ def upload(event, context):
             print(e)
             return {
                 "statusCode": 500,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "error ocurred"
             }
 
@@ -90,15 +103,26 @@ def upload(event, context):
             print(e)
             return {
                 "statusCode": 500,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "body": "error ocurred"
             }
 
         body = {
             "url": get_public_url(bucket, uid),
+            "id": uid
         }
 
         response = {
             "statusCode": 200,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": json.dumps(body)
         }
 
@@ -108,11 +132,22 @@ def upload(event, context):
 
         response = {
             "statusCode": 400,
+            'headers': {
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
             "body": "wrong file type"
         }
 
         return response
 
+
+def check_labels(label):
+    if label == "Book" or label == "Letter" or label == "Text" or label == "Poster" or label == "Manga" or label == "Comics":
+        return True
+    else:
+        return False
 
 def created(event, context):
     # check if text was comic or not
@@ -140,12 +175,6 @@ def created(event, context):
 
         return records[0]
 
-
-    def check_labels(label):
-        if label == "Book" or label == "Letter" or label == "Text" or label == "Poster" or label == "Manga" or label == "Comics":
-            return True
-        else:
-            return False
 
     #code starts here
     for j in event["Records"]:
@@ -245,6 +274,11 @@ def created(event, context):
             json_text_list=json.dumps(sentence_text)
             message = {
                 "statusCode": 200,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                },
                 "textType": label,
                 "text": json_text_list
             }
@@ -280,6 +314,11 @@ def created(event, context):
 
             message  = {
                 "statusCode": 200,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+                },
                 "textType": label,
                 "text": wholeText
             }
@@ -289,5 +328,52 @@ def created(event, context):
 
     else:
         return False
+
+
+def getdata(event, context):
+    print(event)
+    print(event['body'])
+    request_body = json.loads(event['body'])
+    print(request_body)
+
+    timeout=0
+    while(timeout<30):
+
+        data=table.get_item(
+            Key={
+                'ID' : request_body['id'],
+            }
+        )
+        print(data["Item"])
+        print(data["Item"]["TextType"])
+        if check_labels(data["Item"]["TextType"]):
+            break
+        else:
+            print("wait "+str(timeout))
+            timeout+=1
+            time.sleep(2)
+
+    textContent = []
+    for x in data["Item"]["TextContent"]:
+        textContent.append(x)
+
+    print (textContent)
+    body = {
+        "textType": data["Item"]["TextType"],
+        "text": json.dumps(textContent)
+    }
+
+    message = {
+        "statusCode": 200,
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        "body": json.dumps(body)
+
+    }
+    return message
+
 
 

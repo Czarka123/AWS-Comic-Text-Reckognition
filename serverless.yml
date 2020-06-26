@@ -19,6 +19,7 @@ provider:
         - "dynamodb:PutItem"
         - "dynamodb:Scan"
         - "dynamodb:UpdateItem"
+        - "dynamodb:GetItem"
       Resource:
         - !GetAtt Table.Arn
     - Effect: "Allow"
@@ -63,7 +64,7 @@ functions:
       - http:
           path: upload
           method: post
-
+          cors: true
   created:
     handler: handler.created
     reservedConcurrency: 4
@@ -74,6 +75,14 @@ functions:
             Fn::GetAtt:
             - Queue
             - Arn
+  getdata:
+    handler: handler.getdata
+    timeout: 30
+    events:
+      - http:
+          path: data
+          method: post
+          cors: true
 resources:
   Resources:
     Storage:
