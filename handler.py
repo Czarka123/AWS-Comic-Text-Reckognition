@@ -331,37 +331,32 @@ def created(event, context):
 
 
 def getdata(event, context):
-    print(event)
-    print(event['body'])
+
     request_body = json.loads(event['body'])
-    print(request_body)
 
-    timeout=0
-    while(timeout<30):
+    data=table.get_item(
+        Key={
+            'ID' : request_body['id'],
+        }
+    )
 
-        data=table.get_item(
-            Key={
-                'ID' : request_body['id'],
-            }
-        )
-        print(data["Item"])
-        print(data["Item"]["TextType"])
-        if check_labels(data["Item"]["TextType"]):
-            break
-        else:
-            print("wait "+str(timeout))
-            timeout+=1
-            time.sleep(2)
+    print(data["Item"])
+    print(data["Item"]["TextType"])
+    if check_labels(data["Item"]["TextType"]):
+        textContent = []
+        for x in data["Item"]["TextContent"]:
+            textContent.append(x)
 
-    textContent = []
-    for x in data["Item"]["TextContent"]:
-        textContent.append(x)
-
-    print (textContent)
-    body = {
-        "textType": data["Item"]["TextType"],
-        "text": json.dumps(textContent)
-    }
+        print (textContent)
+        body = {
+            "textType": data["Item"]["TextType"],
+            "text": json.dumps(textContent)
+        }
+    else:
+        body = {
+            "textType": data["Item"]["TextType"],
+            "text": ""
+        }
 
     message = {
         "statusCode": 200,

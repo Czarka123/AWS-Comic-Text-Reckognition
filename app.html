@@ -14,19 +14,17 @@
     </div>
     <form enctype="multipart/form-data" method="post" action="javascript:" onsubmit="UploadFile(fileToUpload)">
         <div class="row">
-            <label for="fileToUpload">Select File to Upload</label><br />
+            <label for="fileToUpload" style="font-size:20px">Select File to Upload</label><br />
             <input type="file" name="fileToUpload" id="fileToUpload" />
             <output id="fileInfo"></output>
         </div>
         <div class="row">
             <input type="submit" value="Upload" id="upload" />
         </div>
-        <div class="canvas">
-            <canvas id="canvas" width="200" height="100"></canvas>
-        </div>
     </form>
+
+
     <script>
-        //for file selection, shows size
         function fileSelect(event) {
             console.log(event);
             var file = event.target.files;
@@ -40,22 +38,22 @@
         }
         document.getElementById('fileToUpload').addEventListener('change', fileSelect, false);
 
-        //code picture to base64 and send it
         function UploadFile(event) {
             var file = event.files;
 
 
             var promise = getBase64(file[0]);
             promise.then(function (baseCode) {
-                SendFile(baseCode.split(',')[1], file[0].name)
+                SendFileOnServer(baseCode.split(',')[1], file[0].name)
             });
         }
         document.getElementById("upload").addEventListener("change", UploadFile, false);
 
-        //file upload, server returns id of picture
-        function SendFile(file, name) {
+
+        function SendFileOnServer(file, name) {
             var xhr = new XMLHttpRequest();
             var url = "url1";
+
             var json;
             xhr.open("POST", url, true);
             xhr.setRequestHeader("Content-Type", "application/json");
@@ -63,34 +61,40 @@
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     json = JSON.parse(xhr.responseText);
                     console.log("id : " + json.id)
-                    GetProcessedData(json.id)
+
+                    GetProcessedData(json.id);
+
                 }
             };
             var data = JSON.stringify({ "file": file, "name": name });
             xhr.send(data);
-
         }
-        //request detected text from server, and waits until it get's it
+
         function GetProcessedData(id) {
             url = "url2"
-
             var xmlHttp = new XMLHttpRequest();
-            xmlHttp.open("POST", url, true);
-            xmlHttp.setRequestHeader("Content-Type", "application/json");
-            xmlHttp.onreadystatechange = function () {
-                if (xmlHttp.readyState == 4 && xmlHttp.status == 200 || xmlHttp.status == 204) {
-                    var json = JSON.parse(xmlHttp.responseText);
-                    console.log("textType : " + json.textType);
-                    console.log(" text: " + json.text);
-                    CreateElement("Detected Text Type:  " + json.textType, "div1");
-                    CreateElement("Text Detected:   " + json.text, "div2");
-                }
-            };
-            var data = JSON.stringify({ "id": id });
-            xmlHttp.send(data);
-            console.log("sended: " + data)
+            for (i = 0; i < 10; i++) {
+                sleep(3000);
+                xmlHttp.open("POST", url, true);
+                xmlHttp.setRequestHeader("Content-Type", "application/json");
+                xmlHttp.onreadystatechange = function () {
+                    if (xmlHttp.readyState == 4 && xmlHttp.status == 200 || xmlHttp.status == 204) {
+                        var json = JSON.parse(xmlHttp.responseText);
+                        console.log("textType : " + json.textType);
+                        //console.log(" text: " + json.text);
+                        if (json.textType != "Empty") {                                           
+                            CreateElement("Detected Text Type:  " + json.textType, "div1");
+                            CreateElement("Text Detected:   " + json.text, "div2");
+                            i = 10;
+                        }
+                    }
+                };
+                var data = JSON.stringify({ "id": id });
+                xmlHttp.send(data);
+                console.log("sended: " + data)
+            }
         }
-        //to base64 code function
+
         function getBase64(file, onLoadCallback) {
             return new Promise(function (resolve, reject) {
                 var reader = new FileReader();
@@ -99,7 +103,7 @@
                 reader.readAsDataURL(file);
             });
         }
-        //display results recived from server
+
         function CreateElement(text, elementId) {
             var newDiv = document.createElement("div");
             var newContent = document.createTextNode(text);
@@ -107,6 +111,15 @@
             var currentDiv = document.getElementById(elementId);
             document.body.insertBefore(newDiv, currentDiv);
         }
+
+        function sleep(milliseconds) {
+            const date = Date.now();
+            let currentDate = null;
+            do {
+                currentDate = Date.now();
+            } while (currentDate - date < milliseconds);
+        }
+
 
     </script>
 </body>
